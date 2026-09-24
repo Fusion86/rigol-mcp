@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "rigol-mcp"
 version = "0.1.0"
-description = "MCP server for Rigol DS1000Z oscilloscope over LAN"
+description = "MCP server for Rigol DS1000Z, MSO5000, and DHO oscilloscopes over LAN or USB"
 requires-python = ">=3.11"
 dependencies = [
     "mcp[cli]>=1.0.0",
@@ -24,6 +24,7 @@ dependencies = [
     # is default on 3.14 too.
     "libusb-package>=1.0.26.0; python_version < '3.14'",
     "python-dotenv>=1.0.0",  # load configuration from a local .env file
+    "pillow>=10.0",
 ]
 
 [project.optional-dependencies]

@@ -225,9 +225,66 @@ class DHODriver(ScopeDriver):
 
 # Registry: checked in order, first match wins. An identity matched by no driver is an
 # error (see driver_for) — we do not guess a dialect for an unknown instrument.
+class MSO5000Driver(DS1000ZDriver):
+    """Rigol MSO5000 series, including the four-channel MSO5074."""
+
+    name = "MSO5000"
+    two_source_items = DHODriver.two_source_items
+    two_source_aliases = DHODriver.two_source_aliases
+
+    @classmethod
+    def matches(cls, idn: str) -> bool:
+        fields = idn.upper().split(",")
+        return len(fields) > 1 and fields[1].strip() in {
+            "MSO5074", "MSO5104", "MSO5204", "MSO5354",
+        }
+
+    def screenshot_query(self) -> str:
+        return ":DISPlay:DATA?"  # MSO5000 returns BMP, converted at the scope boundary.
+
+    def prepare_waveform(self, scope):
+        scope.write(":WAV:POIN 1000")
+        scope.write(":WAV:STAR 1")
+        scope.write(":WAV:STOP 1000")
+
+    def read_waveform_data(self, scope):
+        # MSO5074 firmware 00.01.03.02.02 wraps ASCII in an IEEE block, but can
+        # overstate its length when no fresh acquisition exists. Reading ASCII to
+        # the newline avoids waiting for bytes that the instrument never sends.
+        data = scope.query(":WAV:DATA?").strip()
+        if not data.startswith("#"):
+            return data
+        from rigol_mcp.scope import _parse_definite_block_header
+        start, length = _parse_definite_block_header(data.encode("ascii"))
+        payload = data[start:]
+        if len(payload) != length:
+            raise ValueError(
+                f"Incomplete MSO5000 waveform: expected {length} bytes, received "
+                f"{len(payload)}. Acquire a fresh waveform before reading."
+            )
+        return payload
+
+    def write_cursor_axis(self, scope, prefix, name, value_s):
+        scale = float(scope.query(":TIM:SCAL?").strip())
+        offset = float(scope.query(":TIM:OFFS?").strip())
+        pixel = max(0, min(999, round((value_s - offset) * 100 / scale + 500)))
+        cmd = f"{prefix}:C{name}X {pixel}"
+        scope.write(cmd)
+        return cmd
+
+    def read_cursor_axes_s(self, scope, prefix):
+        scale = float(scope.query(":TIM:SCAL?").strip())
+        offset = float(scope.query(":TIM:OFFS?").strip())
+        return tuple(
+            (float(scope.query(f"{prefix}:C{name}X?")) - 500) * scale / 100 + offset
+            for name in ("A", "B")
+        )
+
+
 DS1000Z = DS1000ZDriver()
 DHO = DHODriver()
-_DRIVERS: tuple[ScopeDriver, ...] = (DHO, DS1000Z)
+MSO5000 = MSO5000Driver()
+_DRIVERS: tuple[ScopeDriver, ...] = (MSO5000, DHO, DS1000Z)
 
 # Union of every family's two-source items — used to reject two-source items passed to the
 # single-source measure(), and to advertise the full enum in the tool schema.

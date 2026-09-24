@@ -809,4 +809,12 @@ def screenshot_png(scope: pyvisa.resources.Resource) -> bytes:
     Strips the IEEE 488.2 TMC block header (#NXXXXXXXXX) and trailing \\n.
     """
     scope.write(get_driver(scope).screenshot_query())
-    return _read_definite_block(scope)
+    data = _read_definite_block(scope)
+    if get_driver(scope).name == "MSO5000":
+        import io
+        from PIL import Image
+        with Image.open(io.BytesIO(data)) as image:
+            output = io.BytesIO()
+            image.save(output, format="PNG")
+            return output.getvalue()
+    return data

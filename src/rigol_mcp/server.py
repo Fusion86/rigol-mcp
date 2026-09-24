@@ -255,9 +255,9 @@ async def list_tools() -> list[types.Tool]:
                 "source1 is the reference channel, source2 is the measured channel. "
                 "DS1000Z items: RDELAY (rising-edge delay, seconds), FDELAY (falling-edge delay, seconds), "
                 "RPHASE (rising-edge phase, degrees), FPHASE (falling-edge phase, degrees). "
-                "DHO series exposes a 4-way matrix: RRDELAY/RFDELAY/FRDELAY/FFDELAY and "
+                "DHO and MSO5000 series expose a 4-way matrix: RRDELAY/RFDELAY/FRDELAY/FFDELAY and "
                 "RRPHASE/RFPHASE/FRPHASE/FFPHASE (first letter = source1 edge, second = source2 edge). "
-                "On DHO the DS1000Z names are auto-mapped to their homogeneous equivalents "
+                "On DHO and MSO5000 the DS1000Z names are auto-mapped to their homogeneous equivalents "
                 "(RDELAY→RRDELAY, FDELAY→FFDELAY, RPHASE→RRPHASE, FPHASE→FFPHASE). "
                 "For stable readings: on DS1000Z, stop acquisition first. "
                 "On DHO, keep acquisition running (see `measure` for details). "
@@ -294,7 +294,7 @@ async def list_tools() -> list[types.Tool]:
                 "Set raw_data=true to get the full time/voltage JSON arrays instead. "
                 "If the channel's display is OFF it is auto-enabled first (flagged in the warnings). "
                 "After reading, act on any warnings — if FREQUENCY would be 9.9E37 widen the timebase; "
-                "if edges are not near the DC mean, adjust offset so right edge = N×(period/2) − 6×scale. "
+                "if edges are not near the DC mean, adjust the timebase offset. "
                 "Do not call concurrently with any other rigol tool."
             ),
             inputSchema={

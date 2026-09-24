@@ -1,6 +1,6 @@
 # rigol-mcp
 
-MCP server for controlling **Rigol DS1000Z and DHO series oscilloscopes** over LAN or USB. Exposes the scope as a set of tools that Claude (or any MCP client) can call to take measurements, configure the instrument, and capture screenshots — entirely through natural language.
+MCP server for controlling **Rigol DS1000Z, MSO5000, and DHO series oscilloscopes** over LAN or USB. Exposes the scope as a set of tools that Claude (or any MCP client) can call to take measurements, configure the instrument, and capture screenshots — entirely through natural language.
 
 ![Scope](media/example.png)
 
@@ -25,6 +25,25 @@ Unknown signal (square wave into LCR trap), wrong channel enabled, invalid timeb
 | MSO1074Z | 4 analog + 16 digital | |
 | MSO1104Z | 4 analog + 16 digital | |
 
+**Rigol MSO5000 series (8-bit):**
+
+| Model | Channels | Notes |
+|---|---|---|
+| MSO5074 | 4 analog | 70 MHz; hardware-tested over LAN on firmware 00.01.03.02.02 |
+| MSO5104 / MSO5204 / MSO5354 | 4 analog | Same command dialect; not hardware-tested |
+
+The existing tools support the MSO5000 command dialect, including measurements,
+1000-point screen waveforms, pixel-based cursors, and screenshots. Pillow converts
+the instrument's BMP screenshots to the PNG format returned by the existing tool.
+The implementation uses MSO5000Extended and the
+[Rigol programming guide](https://download.rigol.com/en/Manual/Digital%20Oscilloscope/MSO5000/MSO5000_ProgrammingGuide_EN.pdf)
+as references. The existing tools were exercised on an MSO5074 over LAN, including
+all four waveform channels, measurements, configuration, cursors, screenshots, and
+acquisition controls. USB remains unverified on this family. This firmware wraps
+ASCII waveforms in an IEEE block; incomplete acquisitions produce a clear error
+asking for a fresh capture. Frequency and tracking-cursor readouts can still be
+unavailable when the instrument cannot measure the current acquisition.
+
 **Rigol DHO series (12-bit):**
 
 | Model | Channels | Notes |
@@ -39,7 +58,7 @@ The scope connects either over your **local network via Ethernet** (rear panel R
 
 - Python 3.11+
 - [uv](https://docs.astral.sh/uv/)
-- A Rigol DS1000Z (LAN or USB) or DHO series scope (LAN) connected to your computer
+- A Rigol DS1000Z, MSO5000, or DHO series scope connected to your computer
 - For LAN: SCPI over TCP/IP enabled on the scope (on by default)
 - For USB: a VISA driver on the scope's USB interface — either the native USBTMC driver
   (e.g. from Rigol UltraSigma / any NI-VISA runtime) or WinUSB via Zadig
@@ -207,8 +226,8 @@ For **USB**, replace the `RIGOL_IP` entry in `env` with `"RIGOL_USB": "1"` (see 
 | Tool | Description |
 |---|---|
 | `measure` | Query any single-channel measurement: VMAX, VMIN, VPP, VTOP, VBASE, VAMP, VAVG, VRMS, PVRMS, VUPPER, VMID, VLOWER, VARIANCE, FREQUENCY, PERIOD, PWIDTH, NWIDTH, PDUTY, NDUTY, RTIME, FTIME, OVERSHOOT, PRESHOOT, PSLEWRATE, NSLEWRATE, TVMAX, TVMIN, MAREA, MPAREA, PPULSES, NPULSES, PEDGES, NEDGES |
-| `measure_between` | Query delay or phase between two channels. DS1000Z: RDELAY, FDELAY, RPHASE, FPHASE. DHO: RRDELAY/RFDELAY/FRDELAY/FFDELAY, RRPHASE/RFPHASE/FRPHASE/FFPHASE (DS1000Z names auto-map to the homogeneous-edge DHO equivalents) |
-| `get_waveform` | Download and analyse waveform data (NORM screen buffer: up to 1200 pts on DS1000Z, 1000 on DHO); returns text analysis by default, raw time/voltage arrays with `raw_data=true` |
+| `measure_between` | Query delay or phase between two channels. DS1000Z: RDELAY, FDELAY, RPHASE, FPHASE. DHO/MSO5000: RRDELAY/RFDELAY/FRDELAY/FFDELAY, RRPHASE/RFPHASE/FRPHASE/FFPHASE (DS1000Z names auto-map to the homogeneous-edge equivalents) |
+| `get_waveform` | Download and analyse waveform data (NORM screen buffer: up to 1200 pts on DS1000Z, 1000 on DHO/MSO5000); returns text analysis by default, raw time/voltage arrays with `raw_data=true` |
 
 ### Cursors
 
@@ -285,7 +304,7 @@ uv run --extra test pytest      # or: uv sync --extra test && uv run pytest
 
 - USB driver setup is platform-specific: **Windows** needs WinUSB (via Zadig) or NI-VISA/UltraSigma; **Linux** needs `libusb` access (a udev rule) or NI-VISA; **macOS** typically works through `libusb` with no setup. The server auto-detects the backend — see [USB connection](#usb-connection). LAN needs no driver setup on any platform.
 - No support for math channels, digital channels (MSO), or protocol decode in the current tools yet — use `send_raw` for those
-- Waveform download uses NORMAL mode (screen buffer — up to 1200 points on DS1000Z, 1000 on DHO); full memory depth (RAW mode, up to 56M on DS1000Z / 50M on DHO) is not yet implemented
+- Waveform download uses NORMAL mode (screen buffer — up to 1200 points on DS1000Z, 1000 on DHO/MSO5000); full memory depth (RAW mode, up to 56M on DS1000Z / 50M on DHO) is not yet implemented
 
 ## License
 
